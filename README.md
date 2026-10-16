@@ -100,7 +100,7 @@ dsh plugin --profile desktop add git+ssh://git@github.com/zhangjie-2007/dsh-voic
 改源码调试时改用 `link:`，它会建一个指向源码目录的 junction，改完立刻生效：
 
 ```powershell
-dsh plugin --profile desktop add link:D:\大肥鱼工作点\dsh-completion-voice
+dsh plugin --profile desktop add link:C:\path\to\dsh-voice
 ```
 
 卸载：
@@ -117,7 +117,7 @@ dsh plugin --profile desktop remove dsh-completion-voice
 ## 配置
 
 默认值写在 `lib/impl.mjs` 的 `DEFAULTS` 里；实际生效的覆盖写在 profile 的
-`C:\Users\zhangjie\.dsh\profiles\desktop\cordis.patch.yml`（按 `id` 匹配）：
+`<DSH_HOME>\profiles\<profile>\cordis.patch.yml`（按 `id` 匹配）：
 
 ```yaml
 - id: dsh-completion-voice
@@ -202,21 +202,21 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 
 ## 排查
 
-诊断日志：`C:\Users\zhangjie\.dsh\logs\dsh-completion-voice.log`（超过 256 KB 自动清空）
+诊断日志：`<DSH_HOME>\logs\dsh-completion-voice.log`（超过 256 KB 自动清空）
 
 ```
-[..] apply: enabled=true engine=edge voice=zh-CN-XiaoyiNeural text="已完成当前任务" choice="老大老大，等你做选择呢" settleMs=800 cacheDir=...
+[..] apply: enabled=true engine=edge voice=zh-CN-XiaoyiNeural text="已完成当前任务" choice="老大<prosody rate=\"-45%\">老大</prosody>，等你做选择呢" settleMs=800 cacheDir=...
 [..] ready: listening on session/event
-[..] synthesized 17424B voice=zh-CN-XiaoyiNeural text="老大老大，等你做选择呢" -> C:\Users\zhangjie\.dsh\audio\dsh-completion-voice\41e79dd06b30944d.mp3
-[..] synthesized 13824B voice=zh-CN-XiaoyiNeural text="已完成当前任务" -> C:\Users\zhangjie\.dsh\audio\dsh-completion-voice\5e64fb60c6d0297a.mp3
-[..] prefetch ready ["已完成当前任务"]: ...                    ← 预合成完成（两条提示音各一行）
+[..] synthesized 13824B voice=zh-CN-XiaoyiNeural text="已完成当前任务" -> <cacheDir>\5e64fb60c6d0297a.mp3
+[..] prefetch ready ["已完成当前任务"]: <cacheDir>\5e64fb60c6d0297a.mp3   ← 预合成完成（每条提示音一行）
 [..] skip speak: turn/end reason=aborted                      ← 被打断，不播报
+[..] skip speak: turn/end reason=max-tokens                   ← 上下文写满，不播报
 [..] skip speak: subagent session                             ← 子代理轮次
 [..] skip speak: session xxx has an active goal               ← goal 还在跑
 [..] skip speak: within choiceMinIntervalMs (3000ms)          ← 同一个问题已经提醒过了
-[..] choice cue (tool ask_user_question session=mock-session) ← 要你做选择
-[..] dispatched play 41e79dd06b30944d.mp3 pid=12496           ← 正在播放
-[..] speak dispatched (edge, choice: tool ask_user_question session=mock-session) voice=zh-CN-XiaoyiNeural
+[..] choice cue (tool ask_user_question session=...)          ← 要你做选择
+[..] dispatched play cbc630b220ca90e4.mp3 pid=9884            ← 正在播放
+[..] speak dispatched (edge, choice: tool ask_user_question session=...) voice=zh-CN-XiaoyiNeural
 [..] dispatched play 5e64fb60c6d0297a.mp3 pid=33140
 [..] speak dispatched (edge, turn end) voice=zh-CN-XiaoyiNeural
 [..] synthesize failed (...): ... / speak dispatched (sapi fallback, turn end)   ← 网络不通，回退 SAPI
@@ -226,9 +226,10 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 
 1. 日志里有没有 `speak dispatched`？—— 没有就是触发条件被过滤了（看同行的 `skip speak` 原因）。
 2. 有 `speak dispatched` 但没声音：
-   - `edge` 引擎：`C:\Users\zhangjie\.dsh\audio\dsh-completion-voice\*.mp3` 在不在？能不能手动播放？
+   - `edge` 引擎：`<DSH_HOME>\audio\dsh-completion-voice\` 下有没有 mp3？能不能手动播放？
      ```powershell
-     powershell -NoProfile -c "Add-Type -AssemblyName PresentationCore; $p=New-Object System.Windows.Media.MediaPlayer; $p.Open([Uri]'C:\Users\zhangjie\.dsh\audio\dsh-completion-voice\5e64fb60c6d0297a.mp3'); $n=0; while(-not $p.NaturalDuration.HasTimeSpan -and $n -lt 200){Start-Sleep -Milliseconds 20; $n++}; $p.Play(); Start-Sleep -Seconds 3"
+     $f = "$env:USERPROFILE\.dsh\audio\dsh-completion-voice\" + (Get-ChildItem "$env:USERPROFILE\.dsh\audio\dsh-completion-voice\*.mp3")[0].Name
+     powershell -NoProfile -c "Add-Type -AssemblyName PresentationCore; `$p=New-Object System.Windows.Media.MediaPlayer; `$p.Open([Uri]'$f'); `$n=0; while(-not `$p.NaturalDuration.HasTimeSpan -and `$n -lt 200){Start-Sleep -Milliseconds 20; `$n++}; `$p.Play(); Start-Sleep -Seconds 3"
      ```
    - `sapi` 引擎：机器上有没有中文 SAPI 语音？
      ```powershell
