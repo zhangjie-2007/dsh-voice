@@ -1,11 +1,12 @@
 # dsh-completion-voice
 
-DSH（DeepSeek Harness）插件：**用语音播报两个时机**。
+DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 
 | 时机 | 播报内容 | 声线 |
 | --- | --- | --- |
 | 一轮任务真正结束 | **「已完成当前任务」** | 晓伊 `zh-CN-XiaoyiNeural` |
 | 需要你在界面上做选择（问你问题 / 让你批准计划 / 权限确认） | **「老大老大，等你做选择呢」**（第二个「老大」尾音拖长） | 同上（可用 `choiceVoice` 单独换） |
+| 开始一个新对话 | **「早上好／中午好／下午好／晚上好！有什么工作需要做吗？」**（按系统时间四选一） | 同上（可用 `greetingVoice` 单独换） |
 
 声线用**微软 Edge 神经语音**，真人感强，不是豆包那种温暖女声。
 
@@ -13,7 +14,8 @@ DSH（DeepSeek Harness）插件：**用语音播报两个时机**。
 
 ## 它做了什么
 
-插件监听 DSH 会话事件流（`ctx.on('session/event', ...)`），有两种播报时机。
+插件监听 DSH 会话事件流（`ctx.on('session/event', ...)`）与 cordis 的会话生命周期事件
+（`ctx.on('session/created', ...)`），有三种播报时机。
 
 ### 1. 一轮任务结束 →「已完成当前任务」
 
@@ -36,6 +38,26 @@ DSH（DeepSeek Harness）插件：**用语音播报两个时机**。
 这一条**不做**子代理 / goal / `settleMs` 过滤——它意味着一件事真的卡住了一个人，越早提醒越好；只用 `choiceMinIntervalMs`（默认 3000 ms）防止同一个问题被多个事件连着重复播报。
 
 注意 `ask_user_question` 是**阻塞式**工具调用：等待你回答的期间不会有 `turn/end`，所以「任务完成」那条不会在这时候误响。
+
+### 3. 开始一个新对话 → 按时间问候
+
+| 触发 | 说明 |
+| --- | --- |
+| cordis 的 `session/created` | 每**开始一个新对话**（新会话）时发射一次；不是 session 日志事件，所以不在 `session/event` 里 |
+
+四个时段由 `greetingHours`（默认 `'5,11,13,18'`，即 `早,中,午,晚` 的起始小时）划分，
+按**本机时间**取值：5:00–10:59 早上好 / 11:00–12:59 中午好 / 13:00–17:59 下午好 / 18:00–次日 4:59 晚上好。
+四句文本分别由 `greetingMorning` / `greetingNoon` / `greetingAfternoon` / `greetingEvening` 配置，**留空的那一段就不播报**。
+
+| 条件 | 说明 |
+| --- | --- |
+| 子代理会话 | 默认跳过（`includeSubagents` 一并控制三条提示音） |
+| 恢复 / 分叉出来的会话 | `header.isSeeded === true` 时跳过（`greetingSkipSeeded`），只问候真正新开的对话 |
+| `greetingMinIntervalMs` | 默认 15000 ms：应用启动时如果同时恢复了多个会话，只问候一次，不会连珠炮 |
+| `greetingDelayMs` | 默认 500 ms：会话创建到出声之间留一点时间给界面 |
+
+四段问候语在插件加载时就会**依次预合成**（`greetingPrefetchAll`，串行 + 1.8 s 间隔，避免并发握手被服务端 429），
+所以之后无论哪个时段开新对话，都是纯本地播放、立刻出声。
 
 ### 发声：两种引擎
 
@@ -139,6 +161,17 @@ dsh plugin --profile desktop remove dsh-completion-voice
 | `announceOnApproval` | `true` | 权限确认（`approval/asked`）是否也算「要做选择」 |
 | `choiceVoice` | `''` | 选择提示音的声线；留空 = 沿用 `voice` |
 | `choiceMinIntervalMs` | `3000` | 两次「要做选择」播报的最小间隔（ms） |
+| `announceOnSessionStart` | `true` | 开始新对话时是否按时间播报问候语 |
+| `greetingMorning` | `'早上好！有什么工作需要做吗？'` | 早段（默认 5:00–10:59）文本；留空则不播这一段 |
+| `greetingNoon` | `'中午好！有什么工作需要做吗？'` | 中段（11:00–12:59）文本 |
+| `greetingAfternoon` | `'下午好！有什么工作需要做吗？'` | 午段（13:00–17:59）文本 |
+| `greetingEvening` | `'晚上好！有什么工作需要做吗？'` | 晚段（18:00–次日 4:59）文本 |
+| `greetingHours` | `'5,11,13,18'` | 四段起始小时，格式 `"早,中,午,晚"`，必须是 4 个 0–23 的整数（可跨零点） |
+| `greetingVoice` | `''` | 问候语的声线；留空 = 沿用 `voice` |
+| `greetingDelayMs` | `500` | 会话创建到播报之间的延时（ms） |
+| `greetingMinIntervalMs` | `15000` | 两次问候之间的最小间隔（ms） |
+| `greetingSkipSeeded` | `true` | 恢复 / 分叉出来的会话（`header.isSeeded`）不问候 |
+| `greetingPrefetchAll` | `true` | 后台把四段问候语都预合成好（串行，1.8 s 间隔） |
 | `engine` | `'edge'` | `'edge'` = Edge 神经语音（在线合成 + 本地缓存）；`'sapi'` = 系统本地语音 |
 | `voice` | `'zh-CN-XiaoyiNeural'` | Edge 声线名 |
 | `rate` | `0` | 语速：Edge 用百分比（`-20` = 慢 20%）；`engine: sapi` 时按 `/10` 映射到 SAPI 的 `-10..10` |
@@ -205,8 +238,8 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 诊断日志：`<DSH_HOME>\logs\dsh-completion-voice.log`（超过 256 KB 自动清空）
 
 ```
-[..] apply: enabled=true engine=edge voice=zh-CN-XiaoyiNeural text="已完成当前任务" choice="老大<prosody rate=\"-45%\">老大</prosody>，等你做选择呢" settleMs=800 cacheDir=...
-[..] ready: listening on session/event
+[..] apply: enabled=true engine=edge voice=zh-CN-XiaoyiNeural text="已完成当前任务" choice="老大<prosody rate=\"-45%\">老大</prosody>，等你做选择呢" greeting=on(5,11,13,18) settleMs=800 cacheDir=...
+[..] ready: listening on session/event + session/created
 [..] synthesized 13824B voice=zh-CN-XiaoyiNeural text="已完成当前任务" -> <cacheDir>\5e64fb60c6d0297a.mp3
 [..] prefetch ready ["已完成当前任务"]: <cacheDir>\5e64fb60c6d0297a.mp3   ← 预合成完成（每条提示音一行）
 [..] skip speak: turn/end reason=aborted                      ← 被打断，不播报
@@ -214,9 +247,13 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 [..] skip speak: subagent session                             ← 子代理轮次
 [..] skip speak: session xxx has an active goal               ← goal 还在跑
 [..] skip speak: within choiceMinIntervalMs (3000ms)          ← 同一个问题已经提醒过了
+[..] skip greeting: seeded session (resumed or forked)         ← 恢复/分叉的会话，不问候
+[..] skip greeting: within greetingMinIntervalMs (15000ms)    ← 刚问候过，短时间内不再问候
 [..] choice cue (tool ask_user_question session=...)          ← 要你做选择
+[..] greeting cue (afternoon, session=session-xxxx)           ← 开始新对话，按时间问候
 [..] dispatched play cbc630b220ca90e4.mp3 pid=9884            ← 正在播放
 [..] speak dispatched (edge, choice: tool ask_user_question session=...) voice=zh-CN-XiaoyiNeural
+[..] speak dispatched (edge, greeting: afternoon) voice=zh-CN-XiaoyiNeural
 [..] dispatched play 5e64fb60c6d0297a.mp3 pid=33140
 [..] speak dispatched (edge, turn end) voice=zh-CN-XiaoyiNeural
 [..] synthesize failed (...): ... / speak dispatched (sapi fallback, turn end)   ← 网络不通，回退 SAPI
@@ -251,4 +288,6 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
   想更快可以常驻一个 PowerShell 播放进程，当前版本没做，优先保证简单可靠。
 - **多个会话同时结束**：靠 `minIntervalMs` 去重，不会叠着响。
 - **「要你做选择」这条靠事件识别**：只认 `tool/call` 的工具名匹配（默认 `ask_user_question` / `exit_plan_mode`）和 `approval/asked`。如果某个交互式确认不经过这两个事件，就不会响——把对应的工具名加进 `choiceToolMatch` 即可。
+- **问候语靠 cordis 的 `session/created`**：这是会话生命周期事件，不是会话日志事件。插件用 `{ global: true }` 注册以保证不受作用域过滤；如果你的 DSH 版本换了事件名，日志里会一条 `greeting cue` 都不出现（前两条不受影响）。
+- **启动 DSH 时可能问候一次**：桌面端启动时若自动恢复出一个会话，也会触发 `session/created`。`greetingSkipSeeded` 已经排掉带 seed 的恢复/分叉会话，但如果你的版本恢复时不带 seed，就会在启动时听到一句问候——不想要就设 `announceOnSessionStart: false`。
 - **Edge 语音接口是微软的公开接口**，不是官方 API，将来可能再变（2026 年就刚迁过一次端点，见上文）；变了就更新 `lib/edge-tts.mjs`。
