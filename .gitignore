@@ -1,0 +1,15 @@
+# 依赖
+node_modules/
+
+# 运行时产物：音频缓存、日志、临时文件
+*.log
+*.tmp
+*.bak
+
+# 音频缓存（插件运行时写在 DSH_HOME\audio 下，这里只是保险）
+*.mp3
+
+# 系统垃圾
+Thumbs.db
+desktop.ini
+.DS_Store

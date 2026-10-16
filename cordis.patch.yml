@@ -1,0 +1,21 @@
+# dsh-completion-voice —— DSH bundle patch
+#
+# 这是一份「挂载声明」：DSH 启动时按 bundle 层栈叠加各插件的 patch，
+# 本文件把 dsh-completion-voice 插入 profile 的配置树。
+#
+# 安装方式（本地开发）：
+#   dsh plugin --profile desktop add link:D:\大肥鱼工作点\dsh-completion-voice
+#
+# 插件参数不写在这里：这里只负责把这个插件挂上去。
+# 默认值在 lib/index.js 的 DEFAULTS 中；
+# 想改就写进 profile 自己的 cordis.patch.yml（按 id 覆盖）：
+#
+#   - id: dsh-completion-voice
+#     name: dsh-completion-voice
+#     config:
+#       text: '任务已完成'
+#       settleMs: 800
+
+- insert:
+    - id: dsh-completion-voice
+      name: dsh-completion-voice

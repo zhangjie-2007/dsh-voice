@@ -1,0 +1,27 @@
+{
+  "name": "dsh-completion-voice",
+  "version": "0.2.0",
+  "private": true,
+  "description": "DSH 插件：任务完成 / 需要你做选择时用语音播报（默认「已完成当前任务」和「老大老大，等你做选择呢」）",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "notification",
+    "tts",
+    "voice"
+  ],
+  "type": "module",
+  "main": "lib/plugin.mjs",
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT"
+}
