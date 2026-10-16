@@ -89,6 +89,9 @@ dsh plugin --profile desktop add git+https://github.com/zhangjie-2007/dsh-voice.
 dsh plugin --profile desktop add git+ssh://git@github.com/zhangjie-2007/dsh-voice.git
 ```
 
+> 国内网络下 `git+https://` 这条经常被重置（`Recv failure: Connection was reset`），
+> 用 SSH 那条更稳，前提是本机已经配好 GitHub 的 SSH key。
+
 > 仓库名是 `dsh-voice`，包名 / 插件 id 仍然是 **`dsh-completion-voice`** —— 配置覆盖、卸载命令都按包名来。
 
 `dsh plugin add` 会自动把 `dsh-completion-voice` 追加进 profile 的 `dsh.profile.bundles`，
