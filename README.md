@@ -10,6 +10,10 @@ DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 
 声线用**微软 Edge 神经语音**，真人感强，不是豆包那种温暖女声。
 
+> **系统要求：Windows。** 播放走系统自带的 `powershell.exe` + WPF `MediaPlayer`，SAPI 兜底也只认 Windows 自带语音；在 Linux / macOS 上插件会正常加载，但只写日志、不出声（见文末「已知限制」）。
+>
+> **联网只在第一次合成时需要**：调用微软 Edge 的语音服务把文本合成成 mp3（`api.msedgeservices.com`），之后走本地缓存离线播放。合成失败会自动降级到 SAPI。
+
 ---
 
 ## 它做了什么

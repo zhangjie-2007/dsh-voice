@@ -23,5 +23,14 @@
       "patch": "./cordis.patch.yml"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhangjie-2007/dsh-voice.git"
+  },
+  "homepage": "https://github.com/zhangjie-2007/dsh-voice#readme",
+  "bugs": {
+    "url": "https://github.com/zhangjie-2007/dsh-voice/issues"
+  },
+  "author": "zhangjie-2007",
   "license": "MIT"
 }

@@ -4,16 +4,18 @@
 # 本文件把 dsh-completion-voice 插入 profile 的配置树。
 #
 # 安装方式（本地开发）：
-#   dsh plugin --profile desktop add link:D:\大肥鱼工作点\dsh-completion-voice
+#   dsh plugin --profile desktop add link:C:\path\to\dsh-voice
 #
 # 插件参数不写在这里：这里只负责把这个插件挂上去。
-# 默认值在 lib/index.js 的 DEFAULTS 中；
+# 默认值在 lib/impl.mjs 的 DEFAULTS 中（可从 README 的配置表查）；
 # 想改就写进 profile 自己的 cordis.patch.yml（按 id 覆盖）：
 #
 #   - id: dsh-completion-voice
 #     name: dsh-completion-voice
 #     config:
-#       text: '任务已完成'
+#       engine: edge
+#       voice: zh-CN-XiaoyiNeural
+#       text: '已完成当前任务'
 #       settleMs: 800
 
 - insert:
