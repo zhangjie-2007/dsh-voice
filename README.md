@@ -76,12 +76,13 @@ DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 | 静音范围 | 三条提示音**全部**静音（只影响播报，不影响预合成缓存） |
 | 状态保存 | 写在 `<cacheDir>\bubble-state.json`，重启 DSH 后保持 |
 | 拖拽 | 按住可以拖到任意位置，位置记在浏览器 `localStorage` 里 |
-| 配置 | `showBubble: false` 关掉；此时路由仍注册，但页面不再注入气泡 |
+| 开关音效 | 开启 = 上行三连音 C6-E6-G6 + 一点高频闪光（bingo 感），关闭 = 下行两音 G5-D5。用 Web Audio 在浏览器里**现场合成**，不占资源、不断网、不经过 PowerShell，点下去立刻响。`bubbleSound: false` 关掉 |
+| 配置 | `showBubble: false` 关掉气泡；此时路由仍注册，但页面不再注入 |
 
 接口（只在回环地址、同源页面下可用）：
 
 ```
-GET  /dsh-completion-voice/api   -> { ok: true, enabled: true }
+GET  /dsh-completion-voice/api   -> { ok: true, enabled: true, sound: true }
 POST /dsh-completion-voice/api   {"toggle":true}  或  {"enabled":false}
 ```
 
@@ -218,6 +219,7 @@ dsh plugin --profile desktop remove dsh-completion-voice
 | `skipActiveGoal` | `true` | 有进行中的 goal 时跳过 |
 | `prefetch` | `true` | 加载时就把音频合成好放进缓存 |
 | `showBubble` | `true` | 页面左下角的语音开关悬浮泡（改动需重启 DSH） |
+| `bubbleSound` | `true` | 点悬浮泡时的开关小音效（Web Audio 合成） |
 | `cacheDir` | `''` | 音频缓存目录，空 = `<DSH_HOME>\audio\dsh-completion-voice` |
 | `log` | `true` | 是否写诊断日志 |
 | `powershellPath` | `''` | 自定义 powershell.exe 路径，空则自动探测 |
