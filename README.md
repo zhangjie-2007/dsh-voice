@@ -14,6 +14,8 @@ DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 >
 > **联网只在第一次合成时需要**：调用微软 Edge 的语音服务把文本合成成 mp3（`api.msedgeservices.com`），之后走本地缓存离线播放。合成失败会自动降级到 SAPI。
 
+![启动：预合成三段提示音，然后按事件播报](assets/screenshot-1.png)
+
 ---
 
 ## 它做了什么
