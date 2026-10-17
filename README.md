@@ -9,6 +9,7 @@ DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 | 开始一个新对话 | **「早上好／中午好／下午好／晚上好！有什么工作需要做吗？」**（按系统时间四选一） | 同上（可用 `greetingVoice` 单独换） |
 
 声线用**微软 Edge 神经语音**，真人感强，不是豆包那种温暖女声。
+页面左下角还有一个**小悬浮泡**，点一下就能把三条语音一起静音 / 恢复（见「悬浮泡」一节）。
 
 > **系统要求：Windows。** 播放走系统自带的 `powershell.exe` + WPF `MediaPlayer`，SAPI 兜底也只认 Windows 自带语音；在 Linux / macOS 上插件会正常加载，但只写日志、不出声（见文末「已知限制」）。
 >
@@ -65,6 +66,31 @@ DSH（DeepSeek Harness）插件：**用语音播报三个时机**。
 四段问候语在插件加载时就会**依次预合成**（`greetingPrefetchAll`，串行 + 1.8 s 间隔，避免并发握手被服务端 429），
 所以之后无论哪个时段开新对话，都是纯本地播放、立刻出声。
 
+### 4. 悬浮泡：一键静音 / 恢复
+
+页面**左下角**有一个 40 px 的小圆泡（和输入框的发送按钮差不多大）：粉色渐变 = 正在发声，灰色 = 已静音。
+点一下切换，泡上会浮出一行小字「语音已开 🔔 / 语音已关 🔕」。
+
+| 行为 | 说明 |
+| --- | --- |
+| 静音范围 | 三条提示音**全部**静音（只影响播报，不影响预合成缓存） |
+| 状态保存 | 写在 `<cacheDir>\bubble-state.json`，重启 DSH 后保持 |
+| 拖拽 | 按住可以拖到任意位置，位置记在浏览器 `localStorage` 里 |
+| 配置 | `showBubble: false` 关掉；此时路由仍注册，但页面不再注入气泡 |
+
+接口（只在回环地址、同源页面下可用）：
+
+```
+GET  /dsh-completion-voice/api   -> { ok: true, enabled: true }
+POST /dsh-completion-voice/api   {"toggle":true}  或  {"enabled":false}
+```
+
+> ⚠️ 气泡是**宿主启动时注入页面**的（桌面端注入表只收集一次），所以**开关 `showBubble` 或改动气泡样式后要重启 DSH** 才会看到变化；日常静音/恢复不需要重启。
+
+注入方式与限制（照抄 `dsh-whale-widget` 踩过的坑）：桌面壳的 `index.html` 是安装包里的静态文件，
+`webServer.tapIndex` 永远不生效，唯一通道是 `webserver/index-inject` 的结构化行；
+而页面侧解释器对 `script-src` 行是"加载失败即 reject 整个 boot"，所以**必须**用内联 `script` 行自己建 `<script src>` 并吞掉 `onerror` —— 路由不在也绝不拖垮宿主。
+
 ### 发声：两种引擎
 
 | `engine` | 声音 | 何时用 |
@@ -102,6 +128,8 @@ lib/impl.mjs       真正的实现：事件过滤、缓存管理、播报调度
 lib/edge-tts.mjs   无依赖 Edge 神经语音客户端（含 Sec-MS-GEC 计算）
 lib/ws-client.mjs  极简 WebSocket 客户端（用 node:https 手动握手，因为要自定义 Origin/UA）
 lib/player.mjs     Windows 播放：WPF MediaPlayer 放 mp3；SAPI 兜底朗读
+lib/bubble.mjs     悬浮泡宿主侧：注入行 + /dsh-completion-voice/{bubble.js,api} 路由 + 安全栅栏
+lib/bubble-client.js  悬浮泡的浏览器脚本（原生 JS，无构建、无依赖，约 8.6 KB）
 ```
 
 ---
@@ -189,6 +217,7 @@ dsh plugin --profile desktop remove dsh-completion-voice
 | `includeSubagents` | `false` | 是否也给子代理轮次播报 |
 | `skipActiveGoal` | `true` | 有进行中的 goal 时跳过 |
 | `prefetch` | `true` | 加载时就把音频合成好放进缓存 |
+| `showBubble` | `true` | 页面左下角的语音开关悬浮泡（改动需重启 DSH） |
 | `cacheDir` | `''` | 音频缓存目录，空 = `<DSH_HOME>\audio\dsh-completion-voice` |
 | `log` | `true` | 是否写诊断日志 |
 | `powershellPath` | `''` | 自定义 powershell.exe 路径，空则自动探测 |
@@ -297,3 +326,5 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 - **问候语靠 cordis 的 `session/created`**：这是会话生命周期事件，不是会话日志事件。插件用 `{ global: true }` 注册以保证不受作用域过滤；如果你的 DSH 版本换了事件名，日志里会一条 `greeting cue` 都不出现（前两条不受影响）。
 - **启动 DSH 时可能问候一次**：桌面端启动时若自动恢复出一个会话，也会触发 `session/created`。`greetingSkipSeeded` 已经排掉带 seed 的恢复/分叉会话，但如果你的版本恢复时不带 seed，就会在启动时听到一句问候——不想要就设 `announceOnSessionStart: false`。
 - **Edge 语音接口是微软的公开接口**，不是官方 API，将来可能再变（2026 年就刚迁过一次端点，见上文）；变了就更新 `lib/edge-tts.mjs`。
+- **悬浮泡要重启才换**：气泡是宿主启动时注入页面的（注入表只收集一次），所以 `showBubble` 开关、气泡的位置/样式改动都要**重启 DSH** 才看得到；静音/恢复本身即时生效。
+- **悬浮泡依赖页面的同源凭证**：`/dsh-completion-voice/api` 和插件其它路由一样在 DSH 的浏览器栅栏后面（命令行直接 curl 会 401，这是正常的）。气泡自己在页面里 `fetch` 同源地址，不受影响。
