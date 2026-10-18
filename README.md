@@ -86,7 +86,9 @@ GET  /dsh-completion-voice/api   -> { ok: true, enabled: true, sound: true }
 POST /dsh-completion-voice/api   {"toggle":true}  或  {"enabled":false}
 ```
 
-> ⚠️ 气泡是**宿主启动时注入页面**的（桌面端注入表只收集一次），所以**开关 `showBubble` 或改动气泡样式后要重启 DSH** 才会看到变化；日常静音/恢复不需要重启。
+> ⚠️ 气泡是**宿主启动时注入页面**的（桌面端注入表只收集一次），所以**第一次出现、以及开/关 `showBubble` 之后要重启 DSH**；
+> 而气泡的**样式、颜色、图标**改动只要按 `Ctrl+R` 刷新页面 —— 客户端脚本每次请求都重新读盘，响应带 `Cache-Control: no-store`。
+> 日常点气泡静音/恢复更是即时生效，什么都不用重启。
 
 注入方式与限制（照抄 `dsh-whale-widget` 踩过的坑）：桌面壳的 `index.html` 是安装包里的静态文件，
 `webServer.tapIndex` 永远不生效，唯一通道是 `webserver/index-inject` 的结构化行；
@@ -218,7 +220,7 @@ dsh plugin --profile desktop remove dsh-completion-voice
 | `includeSubagents` | `false` | 是否也给子代理轮次播报 |
 | `skipActiveGoal` | `true` | 有进行中的 goal 时跳过 |
 | `prefetch` | `true` | 加载时就把音频合成好放进缓存 |
-| `showBubble` | `true` | 页面左下角的语音开关悬浮泡（改动需重启 DSH） |
+| `showBubble` | `true` | 页面左下角的语音开关悬浮泡（首次出现/关闭需重启 DSH） |
 | `bubbleSound` | `true` | 点悬浮泡时的开关小音效（Web Audio 合成） |
 | `cacheDir` | `''` | 音频缓存目录，空 = `<DSH_HOME>\audio\dsh-completion-voice` |
 | `log` | `true` | 是否写诊断日志 |
@@ -328,5 +330,5 @@ choiceText: '老大<prosody rate="-45%">老大</prosody>，等你做选择呢'
 - **问候语靠 cordis 的 `session/created`**：这是会话生命周期事件，不是会话日志事件。插件用 `{ global: true }` 注册以保证不受作用域过滤；如果你的 DSH 版本换了事件名，日志里会一条 `greeting cue` 都不出现（前两条不受影响）。
 - **启动 DSH 时可能问候一次**：桌面端启动时若自动恢复出一个会话，也会触发 `session/created`。`greetingSkipSeeded` 已经排掉带 seed 的恢复/分叉会话，但如果你的版本恢复时不带 seed，就会在启动时听到一句问候——不想要就设 `announceOnSessionStart: false`。
 - **Edge 语音接口是微软的公开接口**，不是官方 API，将来可能再变（2026 年就刚迁过一次端点，见上文）；变了就更新 `lib/edge-tts.mjs`。
-- **悬浮泡要重启才换**：气泡是宿主启动时注入页面的（注入表只收集一次），所以 `showBubble` 开关、气泡的位置/样式改动都要**重启 DSH** 才看得到；静音/恢复本身即时生效。
+- **悬浮泡的"出现/消失"要重启**：注入行在宿主启动时一次性收集，所以开或关 `showBubble` 得重启 DSH；但气泡的样式/图标改动只要 `Ctrl+R` 刷新页面，静音/恢复本身即时生效。
 - **悬浮泡依赖页面的同源凭证**：`/dsh-completion-voice/api` 和插件其它路由一样在 DSH 的浏览器栅栏后面（命令行直接 curl 会 401，这是正常的）。气泡自己在页面里 `fetch` 同源地址，不受影响。
